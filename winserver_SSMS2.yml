@@ -1,0 +1,113 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create two EC2 instances with Windows Server with SSMS installed on them
+
+Parameters:
+  AvailabilityZone:
+    Type: String
+    Default: us-east-1a
+    AllowedValues:
+      - us-east-1a
+      - us-east-2a
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable RDP access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: vockey
+
+Mappings:
+  RegionMap:
+    us-east-1:
+      AMI: ami-073e3b46f8802d31b  # Replace with actual AMI ID for us-east-1
+    us-east-2:
+      AMI: ami-073e3b46f8802d31b  # Replace with actual AMI ID for us-east-2
+    # Add additional regions as needed
+
+Resources:
+  WindowsInstance1:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZone
+      InstanceType: t2.micro  # Change as needed
+      KeyName: !Ref KeyName
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMI]
+      SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+      UserData:
+        'Fn::Base64': !Sub |
+          <powershell>
+          # Set Administrator password
+          net user Administrator 'YourSecurePassword123!'
+
+          # Install SQL Server Management Studio (SSMS)
+          $SSMSInstallerUrl = "https://aka.ms/ssmsfullsetup"
+          $SSMSInstallerPath = "C:\SSMS-Setup-ENU.exe"
+
+          # Download the SSMS installer
+          Invoke-WebRequest -Uri $SSMSInstallerUrl -OutFile $SSMSInstallerPath
+
+          # Install SSMS silently
+          Start-Process -FilePath $SSMSInstallerPath -ArgumentList "/install", "/quiet", "/norestart" -Wait
+
+          # Clean up the installer file
+          Remove-Item $SSMSInstallerPath -Force
+
+          </powershell>
+      Tags:
+        - Key: Name
+          Value: WindowsServerProductionDatabaseServer1
+
+  WindowsInstance2:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZone
+      InstanceType: t2.micro  # Change as needed
+      KeyName: !Ref KeyName
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMI]
+      SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+      UserData:
+        'Fn::Base64': !Sub |
+          <powershell>
+          # Set Administrator password
+          net user Administrator 'YourSecurePassword123!'
+
+          # Install SQL Server Management Studio (SSMS)
+          $SSMSInstallerUrl = "https://aka.ms/ssmsfullsetup"
+          $SSMSInstallerPath = "C:\SSMS-Setup-ENU.exe"
+
+          # Download the SSMS installer
+          Invoke-WebRequest -Uri $SSMSInstallerUrl -OutFile $SSMSInstallerPath
+
+          # Install SSMS silently
+          Start-Process -FilePath $SSMSInstallerPath -ArgumentList "/install", "/quiet", "/norestart" -Wait
+
+          # Clean up the installer file
+          Remove-Item $SSMSInstallerPath -Force
+
+          </powershell>
+      Tags:
+        - Key: Name
+          Value: WindowsServerProductionDatabaseServer2
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable RDP access via port 3389
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3389
+          ToPort: 3389
+          CidrIp: 0.0.0.0/0  # For production, restrict this to trusted IPs
+
+Outputs:
+  InstanceId1:
+    Description: The Instance ID of the first EC2 instance
+    Value: !Ref WindowsInstance1
+  PublicIP1:
+    Description: Public IP address of the first EC2 instance
+    Value: !GetAtt WindowsInstance1.PublicIp
+  InstanceId2:
+    Description: The Instance ID of the second EC2 instance
+    Value: !Ref WindowsInstance2
+  PublicIP2:
+    Description: Public IP address of the second EC2 instance
+    Value: !GetAtt WindowsInstance2.PublicIp
